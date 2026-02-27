@@ -4,10 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "BD_PhysicsInteractable.h"
 #include "BD_Projectile.generated.h"
 
 UCLASS()
-class BLASTDASH_API ABD_Projectile : public AActor
+class BLASTDASH_API ABD_Projectile : public AActor, public IBD_PhysicsInteractable
 {
 	GENERATED_BODY()
 	
@@ -62,4 +63,6 @@ public:
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	virtual void ApplyCustomImpulse_Implementation(FVector Impulse, bool bVelocityChange) override;
 };

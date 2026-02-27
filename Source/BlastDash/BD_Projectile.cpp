@@ -25,13 +25,31 @@ ABD_Projectile::ABD_Projectile()
 void ABD_Projectile::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	if (UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(GetRootComponent()))
+	{
+		RootPrim->SetCollisionObjectType(ECC_PhysicsBody);
+		RootPrim->SetSimulatePhysics(false);
+		RootPrim->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
 }
 
 // Called every frame
 void ABD_Projectile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	TimeElapsed += DeltaTime;
+	if (TimeElapsed >= ExplosionDelayTime) {
+		ExecuteExplosion();
+	}
+
+	UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(GetRootComponent());
+	if (RootPrim && RootPrim->IsSimulatingPhysics())
+	{
+		Velocity = RootPrim->GetComponentVelocity();
+		return;
+	}
 
 	FVector Acceleration = Gravity;
 
@@ -51,6 +69,11 @@ void ABD_Projectile::Tick(float DeltaTime)
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this); // Ignore itself
 
+	if (AActor* PlayerChar = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0))
+	{
+		QueryParams.AddIgnoredActor(PlayerChar);
+	}
+
 	bool bHit = GetWorld()->SweepSingleByChannel(
 		HitResult,
 		CurrentLocation,
@@ -66,11 +89,6 @@ void ABD_Projectile::Tick(float DeltaTime)
 	}
 	else {
 		SetActorLocation(NextLocation);
-	}
-
-	TimeElapsed += DeltaTime;
-	if (TimeElapsed >= ExplosionDelayTime) {
-		ExecuteExplosion();
 	}
 }
 
@@ -177,4 +195,18 @@ void ABD_Projectile::ExecuteExplosion() {
 
 void ABD_Projectile::OnSelfDestroy() {
 	this->Destroy();
+}
+
+void ABD_Projectile::ApplyCustomImpulse_Implementation(FVector Impulse, bool bVelocityChange)
+{
+	// Release Physics Engine
+	if (UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(GetRootComponent())) {
+		RootPrim->SetSimulatePhysics(false);
+	}
+
+	if (bVelocityChange) {
+		Velocity = Impulse;
+	} else {
+		Velocity = Impulse / FMath::Max(Mass, 0.1f);
+	}
 }
